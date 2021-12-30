@@ -3,7 +3,7 @@ Contributors: Backup with UpdraftPlus, DavidAnderson, DNutbourne, aporter, snigh
 Tags: backup, restore, database backup, wordpress backup, cloud backup, s3, dropbox, google drive, onedrive, ftp, backups
 Requires at least: 3.2
 Tested up to: 5.8
-Stable tag: 1.16.62
+Stable tag: 1.16.69
 Author URI: https://updraftplus.com
 Donate link: https://david.dw-perspective.org.uk/donate
 License: GPLv3 or later
@@ -168,6 +168,42 @@ The <a href="https://updraftplus.com/news/">UpdraftPlus backup blog</a> is the b
 
 N.B. Paid versions of UpdraftPlus Backup / Restore have a version number which is 1 higher in the first digit, and has an extra component on the end, but the changelog below still applies. i.e. changes listed for 1.16.32.x of the free version correspond to changes made in 2.16.32.x of the paid version.
 
+= 1.16.69 - 27/Dec/2021 =
+
+* FIX: A bug that prevented a final resumption from attempting to split the zip to make progress
+* FIX: Handle LOCK TABLES statements produced by some mysqldump versions properly in case of atomic restores
+* SECURITY: Fix a non-persistent XSS error allowing an attacker to once run JavaScript in your web browser if you clicked on a link crafted personally for you whilst logged into your site (very similar to that fixed in 1.16.65/6). A packaging error meant that this was not properly fixed in the 1.16.67-68 releases.
+* TWEAK: Search and replace ABSPATH if it's changed, non-trivial and stored in the DB by a bad plugin/theme
+* TWEAK: Make whole label for "UpdraftPlus temporary clone user login settings" clickable
+* TWEAK: Change wording for an advanced tool for clarity
+* TWEAK: Include UD in user agent for S3 calls when using the AWS SDKs
+* TWEAK: Make sure WP_Error is passed up during specific plugin update failure case
+
+= 1.16.66 - 29/Nov/2021 =
+
+* SECURITY: The fix made in 1.16.65 was faulty; this release corrects it.
+
+= 1.16.65 - 25/Nov/2021 =
+
+* SECURITY: Fix a non-persistent XSS error allowing an attacker to once run JavaScript in your web browser if you clicked on a link crafted personally for your site whilst logged into it. Discovered by Krzysztof Zając.
+* TWEAK: Premium - add review link at bottom of admin
+
+= 1.16.64 - 24/Nov/2021 =
+
+* FIX: Do not create a zip manifest file if the zip is still potentially incomplete
+* TWEAK: Improve Dropbox downloading performance by reducing round-trips, by eliminating unnecessary chunking
+* TWEAK: Update certificate store to current list
+* TWEAK: Increase precision of previous check-in record in log
+
+= 1.16.63 - 25/Oct/2021 =
+
+* FIX: Use correct zip file name when creating manifest
+* TWEAK: Tweak the response data of UpdraftCentral's plugin and theme handlers to add additional error information
+* TWEAK: Moved the raw backup history command so it can be accessed via UpdraftCentral
+* TWEAK: Optimise away unnecessary file open/read/close cycle on null gzip files when writing the final database dump (should help on enormous sites with thousands of tables)
+* TWEAK: Cleanup .list.tmp files when a local backup completes
+* TWEAK: Refactor WebDAV addon code for future improvements
+
 = 1.16.62 - 30/Sep/2021 =
 
 * FIX: Fix UpdraftCentral error when installing plugin or theme on a slow connection
@@ -181,6 +217,7 @@ N.B. Paid versions of UpdraftPlus Backup / Restore have a version number which i
 * TWEAK: Introduce constant: UPDRAFTPLUS_LOG_BACKUP_SELECTS: Defining this to true will cause the SQL SELECT commands used when fetching data for a database table backup to be logged in the UpdraftPlus backup log
 * TWEAK: Don't change SQL modes if a null value is returned
 * TWEAK: Existing backups paging logic to avoid a confusing rescan user experience
+* TWEAK: Refactor the search and replace engine
 
 = 1.16.61 - 28/Aug/2021 =
 
@@ -1260,7 +1297,7 @@ N.B. Paid versions of UpdraftPlus Backup / Restore have a version number which i
 = 1.13.6 - 05/Sep/2017 =
 
 * FEATURE: Google Drive authorisation now goes via an officially registered app for easier connections to Google Drive.
-* FEATURE: Include commands for UpdraftCentral's (https://updraftcentral.com) Google Analytics management facility (check the changelog for the release)
+* FEATURE: Include commands for UpdraftCentral's (https://updraftcentral.com) Google Analytics management facility (check the changelog.txt for the release)
 * FIX: Correct handling of OneDrive folder names featuring spaces (possibly a regression/change in the handling at OneDrive's end)
 * TWEAK: Prevent messy layout when the last log message is very long
 * TWEAK: Log catchable fatal errors and exceptions during backup in PHP 7
@@ -1390,4 +1427,4 @@ Reliance upon any non-English translation is at your own risk; UpdraftPlus can g
 We recognise and thank those mentioned at https://updraftplus.com/acknowledgements/ for code and/or libraries used and/or modified under the terms of their open source licences.
 
 == Upgrade Notice ==
-* 1.16.62: Various small tweaks and improvements, including fixing an UpdraftCentral error when installing plugin or theme on a slow connection. A recommended update for all.
+* 1.16.69: Fixes a non-persistent reflected XSS issue (and packaging error in .67-68). Do not create a zip manifest file if the zip is still potentially incomplete. Fixes a potential issue with resumptions on large backups. Various small tweaks. A recommended update for all.
