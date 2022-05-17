@@ -4,7 +4,7 @@ Contributors:      google
 Requires at least: 4.7
 Tested up to:      5.9
 Requires PHP:      5.6
-Stable tag:        1.70.0
+Stable tag:        1.74.0
 License:           Apache License 2.0
 License URI:       https://www.apache.org/licenses/LICENSE-2.0
 Tags:              google, search-console, analytics, adsense, pagespeed-insights, optimize, tag-manager, site-kit
@@ -38,7 +38,7 @@ Site Kit shows key metrics and insights from different Google products:
 
 == Installation ==
 **Note**: Make sure that your website is live. If your website isn't live yet, Site Kit can't show you any data. 
-However, if you have a staging environment in addition to your production site, Site Kit can display data from your production site in the staging environment. Learn how to use [Site Kit with a staging environment](https://sitekit.withgoogle.com/documentation/using-site-kit-on-a-staging-environment/).
+However, if you have a staging environment in addition to your production site, Site Kit can display data from your production site in the staging environment. Learn how to use [Site Kit with a staging environment](https://sitekit.withgoogle.com/documentation/using-site-kit/staging/).
 
 = Installation from within WordPress =
 
@@ -60,7 +60,7 @@ However, if you have a staging environment in addition to your production site, 
 1. Visit the new **Site Kit** menu.
 2. Follow the instructions in the setup flow.
 3. Go to the main Site Kit dashboard which already displays key metrics from Search Console.
-4. Connect additional Google tools under **Site Kit > Settings**. Learn more about [which tools are right for you](https://sitekit.withgoogle.com/documentation/choose-tools/).
+4. Connect additional Google tools under **Site Kit > Settings**. Learn more about [which tools are right for you](https://sitekit.withgoogle.com/documentation/getting-started/connecting-services/).
 
 == Frequently Asked Questions ==
 
@@ -105,6 +105,96 @@ By default, Site Kit does anonymize IP addresses upon activation of the Google A
 Please create a new topic on our [WordPress.org support forum](https://wordpress.org/support/plugin/google-site-kit/). Be sure to follow the [support forum guidelines](https://wordpress.org/support/guidelines/) when posting.
 
 == Changelog ==
+
+= 1.74.0 =
+
+**Enhanced**
+
+* Remove color from disabled tab in Search Console widget on dashboard when Search Console is gathering data. See [#5056](https://github.com/google/site-kit-wp/issues/5056).
+* Add `useViewContext` hook for retrieving the current view context. See [#5011](https://github.com/google/site-kit-wp/issues/5011).
+* Update internal event tracking to include user authentication state. See [#4846](https://github.com/google/site-kit-wp/issues/4846).
+* Add the new DashboardSharingSettingsButton component. See [#4820](https://github.com/google/site-kit-wp/issues/4820).
+* Hide Analytics goals CTA in view-only context. See [#4817](https://github.com/google/site-kit-wp/issues/4817).
+* Add a dropdown menu for users using the "view-only" dashboard sharing mode. See [#4812](https://github.com/google/site-kit-wp/issues/4812).
+* Allow users with shared dashboard access to navigate directly to the shared dashboard from the splash page. See [#4811](https://github.com/google/site-kit-wp/issues/4811).
+* Implement the view only splash screen. See [#4810](https://github.com/google/site-kit-wp/issues/4810).
+* Add an action to recover a module and a selector to get recoverable modules. See [#4803](https://github.com/google/site-kit-wp/issues/4803).
+* Implement UI for new AdSense setup site components. See [#4764](https://github.com/google/site-kit-wp/issues/4764).
+
+**Fixed**
+
+* Update the AdSense SetupMain component to show existing errors. See [#5107](https://github.com/google/site-kit-wp/issues/5107).
+* Avoid an unnecessary network request for Analytics settings on the Site Kit dashboard when Analytics is not active. See [#5091](https://github.com/google/site-kit-wp/issues/5091).
+* Add required versions of PHP and WP to plugin header. See [#5076](https://github.com/google/site-kit-wp/issues/5076).
+* Fix infinite loading state for components relying on gathering or zero data reports. See [#4542](https://github.com/google/site-kit-wp/issues/4542).
+
+= 1.73.0 =
+
+**Enhanced**
+
+* Update Google API client services library for latest AdSense API enhancements. See [#5092](https://github.com/google/site-kit-wp/issues/5092).
+* Update the `Learn More` link to point to the new documentation page. Props smamun19. See [#5077](https://github.com/google/site-kit-wp/issues/5077).
+* Update AdSense V2 state detection logic with new API return values. See [#5052](https://github.com/google/site-kit-wp/issues/5052).
+* Update AdSense V2 code constants to use new API capabilities. See [#5051](https://github.com/google/site-kit-wp/issues/5051).
+* Improve logic for handling timeouts for user surveys on the dashboard. See [#4925](https://github.com/google/site-kit-wp/issues/4925).
+* Update widget registration to declare associated modules. See [#4849](https://github.com/google/site-kit-wp/issues/4849).
+* Ensure permissions modal only appears for authenticated users. See [#4819](https://github.com/google/site-kit-wp/issues/4819).
+* Hide Idea Hub action buttons when viewing dashboard in view-only mode. See [#4816](https://github.com/google/site-kit-wp/issues/4816).
+* Update source links to hide on the view only dashboard. See [#4815](https://github.com/google/site-kit-wp/issues/4815).
+* Add UI for new AdSense components. See [#4762](https://github.com/google/site-kit-wp/issues/4762).
+* Extend and update custom capabilities for viewing dashboard and splash screens with logic for dashboard sharing. See [#4599](https://github.com/google/site-kit-wp/issues/4599).
+* Add REST endpoint for module recovery. See [#4533](https://github.com/google/site-kit-wp/issues/4533).
+
+**Fixed**
+
+* Ensure closed AdSense accounts are not considered for the AdSense account to use with the module. Props sancodes. See [#5050](https://github.com/google/site-kit-wp/issues/5050).
+* Remove lines below "gathering data" text on chart metric selection buttons. See [#5010](https://github.com/google/site-kit-wp/issues/5010).
+* Fix bug that could cause the incorrect notification to briefly appear when Analytics or Search Console is gathering data. See [#5008](https://github.com/google/site-kit-wp/issues/5008).
+* Add "gathering data" overlay to the All Traffic widget when Analytics is gathering data. See [#5006](https://github.com/google/site-kit-wp/issues/5006).
+* Fix zero data state message formatting issues. See [#5001](https://github.com/google/site-kit-wp/issues/5001).
+* Add "gathering data" and "zero data" headers to single URL ("entity") dashboard pages. See [#4983](https://github.com/google/site-kit-wp/issues/4983).
+* Update complete Analytics activation CTA for consistency with new zero data states activation CTA. See [#4966](https://github.com/google/site-kit-wp/issues/4966).
+* Fix authentication issue with WordPress security plugins/other plugins that modify/obscure the WordPress version number. See [#4963](https://github.com/google/site-kit-wp/issues/4963).
+* Fix Google chart labels to no longer be truncated due to lack of space. See [#4944](https://github.com/google/site-kit-wp/issues/4944).
+
+= 1.72.0 =
+
+**Enhanced**
+
+* Update documentation URLs. See [#4935](https://github.com/google/site-kit-wp/issues/4935).
+* Use alternate `viewContext` for non-authenticated users. See [#4814](https://github.com/google/site-kit-wp/issues/4814).
+* Implement modified snippet toggle component for enhanced AdSense setup flow. See [#4761](https://github.com/google/site-kit-wp/issues/4761).
+
+**Fixed**
+
+* Fix bug where user surveys would not trigger when viewing the dashboard. See [#5073](https://github.com/google/site-kit-wp/issues/5073).
+* When Analytics is gathering data, ensure "gathering data" is shown under All Users in the All Traffic widget. See [#5007](https://github.com/google/site-kit-wp/issues/5007).
+* Ensure WordPress dashboard notices appear in Site Kit. See [#4998](https://github.com/google/site-kit-wp/issues/4998).
+* Don't show the "gathering data" blue box CTA on the Admin Bar. See [#4986](https://github.com/google/site-kit-wp/issues/4986).
+* Fix styling issues with table view on mobile when no results are available. See [#4982](https://github.com/google/site-kit-wp/issues/4982).
+* Prevent selection of metrics in the Search Traffic widget when gathering data. See [#4967](https://github.com/google/site-kit-wp/issues/4967).
+* Disable All Traffic pie chart tabs when in gathering or zero data state. See [#4961](https://github.com/google/site-kit-wp/issues/4961).
+* Ensure consistent alignment of content in data blocks. See [#4946](https://github.com/google/site-kit-wp/issues/4946).
+* Fix gathering data message appearing too early on chart components. See [#4945](https://github.com/google/site-kit-wp/issues/4945).
+* Fix display of special characters used in the site title. See [#4852](https://github.com/google/site-kit-wp/issues/4852).
+
+= 1.71.0 =
+
+**Enhanced**
+
+* Update gathering data UI in WordPress Dashboard widget. See [#4908](https://github.com/google/site-kit-wp/issues/4908).
+* Update the Analytics Signup CTA on the WordPress Dashboard. See [#4868](https://github.com/google/site-kit-wp/issues/4868).
+* Store remote features as a persistent option, ensuring features remain enabled when Site Kit is disconnected or reset. See [#4861](https://github.com/google/site-kit-wp/issues/4861).
+* Add additional context to remote feature request. See [#4858](https://github.com/google/site-kit-wp/issues/4858).
+* Prevent surveys from triggering for non-authenticated users on a shared dashboard. See [#4806](https://github.com/google/site-kit-wp/issues/4806).
+* Add notifications to site header when Analytics and/or Search Console are still gathering data. See [#4698](https://github.com/google/site-kit-wp/issues/4698).
+* Update widgets to pass gathering data state to components. See [#4697](https://github.com/google/site-kit-wp/issues/4697).
+* Update CTA placement for the Search Funnel widget on mobile. See [#4695](https://github.com/google/site-kit-wp/issues/4695).
+* Improve the zero state design in the All Traffic Widget. See [#4675](https://github.com/google/site-kit-wp/issues/4675).
+
+**Fixed**
+
+* Ensure request for remote features is made on site connection. See [#4957](https://github.com/google/site-kit-wp/issues/4957).
 
 = 1.70.0 =
 
