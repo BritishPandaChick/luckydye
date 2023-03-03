@@ -32,6 +32,7 @@ use WP_REST_Response;
 use Google\Site_Kit\Core\Modules\Modules;
 use Google\Site_Kit\Core\Util\BC_Functions;
 use Google\Site_Kit\Core\Util\URL;
+use Google\Site_Kit\Core\Util\Auto_Updates;
 
 /**
  * Authentication Class.
@@ -72,15 +73,6 @@ final class Authentication {
 	 * @var User_Options
 	 */
 	private $user_options = null;
-
-	/**
-	 * User_Input_State object.
-	 *
-	 * @since 1.20.0
-	 *
-	 * @var User_Input_State
-	 */
-	private $user_input_state = null;
 
 	/**
 	 * User_Input
@@ -250,7 +242,6 @@ final class Authentication {
 		$this->user_options         = $user_options ?: new User_Options( $this->context );
 		$this->transients           = $transients ?: new Transients( $this->context );
 		$this->modules              = new Modules( $this->context, $this->options, $this->user_options, $this );
-		$this->user_input_state     = new User_Input_State( $this->user_options );
 		$this->user_input           = new User_Input( $context, $this->options, $this->user_options );
 		$this->google_proxy         = new Google_Proxy( $this->context );
 		$this->credentials          = new Credentials( new Encrypted_Options( $this->options ) );
@@ -281,9 +272,10 @@ final class Authentication {
 		$this->owner_id->register();
 		$this->connected_proxy_url->register();
 		$this->disconnected_reason->register();
-		$this->user_input_state->register();
 		$this->initial_version->register();
-		$this->user_input->register();
+		if ( Feature_Flags::enabled( 'userInput' ) ) {
+			$this->user_input->register();
+		}
 
 		add_filter( 'allowed_redirect_hosts', $this->get_method_proxy( 'allowed_redirect_hosts' ) );
 		add_filter( 'googlesitekit_admin_data', $this->get_method_proxy( 'inline_js_admin_data' ) );
@@ -299,19 +291,7 @@ final class Authentication {
 
 		add_action( 'admin_init', $this->get_method_proxy( 'handle_oauth' ) );
 		add_action( 'admin_init', $this->get_method_proxy( 'check_connected_proxy_url' ) );
-		add_action( 'admin_init', $this->get_method_proxy( 'verify_user_input_settings' ) );
-		add_action(
-			'admin_init',
-			function() {
-				if (
-					'googlesitekit-dashboard' === htmlspecialchars( $this->context->input()->filter( INPUT_GET, 'page' ) ?: '' )
-					&& User_Input_State::VALUE_REQUIRED === $this->user_input_state->get()
-				) {
-					wp_safe_redirect( $this->context->admin_url( 'user-input' ) );
-					exit;
-				}
-			}
-		);
+
 		add_action( 'admin_action_' . self::ACTION_CONNECT, $this->get_method_proxy( 'handle_connect' ) );
 		add_action( 'admin_action_' . self::ACTION_DISCONNECT, $this->get_method_proxy( 'handle_disconnect' ) );
 
@@ -330,10 +310,6 @@ final class Authentication {
 				}
 
 				$this->set_connected_proxy_url();
-
-				if ( empty( $previous_scopes ) ) {
-					$this->require_user_input();
-				}
 			},
 			10,
 			3
@@ -370,11 +346,11 @@ final class Authentication {
 					$user['user']['full_name'] = isset( $profile_data['full_name'] ) ? $profile_data['full_name'] : null;
 				}
 
-				$user['connectURL']        = esc_url_raw( $this->get_connect_url() );
-				$user['hasMultipleAdmins'] = $this->has_multiple_admins->get();
-				$user['initialVersion']    = $this->initial_version->get();
-				$user['userInputState']    = $this->user_input_state->get();
-				$user['verified']          = $this->verification->has();
+				$user['connectURL']           = esc_url_raw( $this->get_connect_url() );
+				$user['hasMultipleAdmins']    = $this->has_multiple_admins->get();
+				$user['initialVersion']       = $this->initial_version->get();
+				$user['isUserInputCompleted'] = ! $this->user_input->are_settings_empty();
+				$user['verified']             = $this->verification->has();
 
 				return $user;
 			}
@@ -542,17 +518,6 @@ final class Authentication {
 	 */
 	public function get_google_proxy() {
 		return $this->google_proxy;
-	}
-
-	/**
-	 * Gets the User Input State instance.
-	 *
-	 * @since 1.21.0
-	 *
-	 * @return User_Input_State An instance of the User_Input_State class.
-	 */
-	public function get_user_input_state() {
-		return $this->user_input_state;
 	}
 
 	/**
@@ -786,7 +751,7 @@ final class Authentication {
 			wp_die( esc_html__( 'You don\'t have permissions to authenticate with Site Kit.', 'google-site-kit' ), 403 );
 		}
 
-		$redirect_url = $input->filter( INPUT_GET, 'redirect', FILTER_VALIDATE_URL );
+		$redirect_url = $input->filter( INPUT_GET, 'redirect', FILTER_DEFAULT );
 		if ( $redirect_url ) {
 			$redirect_url = esc_url_raw( wp_unslash( $redirect_url ) );
 		}
@@ -923,21 +888,40 @@ final class Authentication {
 
 		$version = get_bloginfo( 'version' );
 
-		// The trailing '.0' is added to the $version to ensure there are always at least 2 segments in the version.
-		// This is necessary in case the minor version is stripped from the version string by a plugin.
-		// See https://github.com/google/site-kit-wp/issues/4963 for more details.
-		list( $major, $minor ) = explode( '.', $version . '.0' );
+		$data['wpVersion'] = $this->inline_js_wp_version( $version );
 
-		$data['wpVersion'] = array(
-			'version' => $version,
-			'major'   => (int) $major,
-			'minor'   => (int) $minor,
-		);
+		if ( version_compare( $version, '5.5', '>=' ) && function_exists( 'wp_is_auto_update_enabled_for_type' ) ) {
+			$data['changePluginAutoUpdatesCapacity'] = Auto_Updates::is_plugin_autoupdates_enabled() && Auto_Updates::AUTO_UPDATE_NOT_FORCED === Auto_Updates::sitekit_forced_autoupdates_status();
+			$data['siteKitAutoUpdatesEnabled']       = Auto_Updates::is_sitekit_autoupdates_enabled();
+		}
+
+		$data['pluginBasename'] = GOOGLESITEKIT_PLUGIN_BASENAME;
 
 		$current_user      = wp_get_current_user();
 		$data['userRoles'] = $current_user->roles;
 
 		return $data;
+	}
+
+	/**
+	 * Gets the WP version to pass to JS.
+	 *
+	 * @since 1.93.0
+	 *
+	 * @param string $version The WP version.
+	 * @return array The WP version to pass to JS.
+	 */
+	private function inline_js_wp_version( $version ) {
+		// The trailing '.0' is added to the $version to ensure there are always at least 2 segments in the version.
+		// This is necessary in case the minor version is stripped from the version string by a plugin.
+		// See https://github.com/google/site-kit-wp/issues/4963 for more details.
+		list( $major, $minor ) = explode( '.', $version . '.0' );
+
+		return array(
+			'version' => $version,
+			'major'   => (int) $major,
+			'minor'   => (int) $minor,
+		);
 	}
 
 	/**
@@ -1017,6 +1001,23 @@ final class Authentication {
 	private function allowed_redirect_hosts( $hosts ) {
 		$hosts[] = 'accounts.google.com';
 		$hosts[] = URL::parse( $this->google_proxy->url(), PHP_URL_HOST );
+
+		// In the case of IDNs, ensure the ASCII and non-ASCII domains
+		// are treated as allowable origins.
+		$admin_hostname = URL::parse( admin_url(), PHP_URL_HOST );
+
+		// See \Requests_IDNAEncoder::is_ascii.
+		$is_ascii = preg_match( '/(?:[^\x00-\x7F])/', $admin_hostname ) !== 1;
+
+		// If this host is already an ASCII-only string, it's either
+		// not an IDN or it's an ASCII-formatted IDN.
+		// We only need to intervene if it is non-ASCII.
+		if ( ! $is_ascii ) {
+			// If this host is an IDN in Unicode format, we need to add the
+			// urlencoded versions of the domain to the `$hosts` array,
+			// because this is what will be used for redirects.
+			$hosts[] = rawurlencode( $admin_hostname );
+		}
 
 		return $hosts;
 	}
@@ -1241,25 +1242,6 @@ final class Authentication {
 	}
 
 	/**
-	 * Requires user input if it is not already completed.
-	 *
-	 * @since 1.22.0
-	 */
-	private function require_user_input() {
-		if ( ! Feature_Flags::enabled( 'userInput' ) ) {
-			return;
-		}
-
-		// Refresh user input settings from the proxy.
-		// This will ensure the user input state is updated as well.
-		$this->user_input->set_answers( null );
-
-		if ( User_Input_State::VALUE_COMPLETED !== $this->user_input_state->get() ) {
-			$this->user_input_state->set( User_Input_State::VALUE_REQUIRED );
-		}
-	}
-
-	/**
 	 * Sets the current connected proxy URL.
 	 *
 	 * @since 1.17.0
@@ -1371,25 +1353,6 @@ final class Authentication {
 	 */
 	public function get_proxy_support_link_url() {
 		return $this->google_proxy->url( Google_Proxy::SUPPORT_LINK_URI );
-	}
-
-	/**
-	 * Verifies the user input settings
-	 *
-	 * @since 1.20.0
-	 */
-	private function verify_user_input_settings() {
-		if (
-			empty( $this->user_input_state->get() )
-			&& $this->is_authenticated()
-			&& $this->credentials()->has()
-			&& $this->credentials->using_proxy()
-		) {
-			$is_empty = $this->user_input->are_settings_empty();
-			if ( ! is_null( $is_empty ) ) {
-				$this->user_input_state->set( $is_empty ? User_Input_State::VALUE_MISSING : User_Input_State::VALUE_COMPLETED );
-			}
-		}
 	}
 
 	/**
