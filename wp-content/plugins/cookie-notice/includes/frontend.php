@@ -32,19 +32,24 @@ class Cookie_Notice_Frontend {
 
 		// cookie compliance initialization
 		if ( $cn->get_status() === 'active' ) {
-			// litespeed cache 3.0+ compatibility
-			if ( class_exists( 'LiteSpeed\Core' ) && defined( 'LSCWP_CUR_V' ) && version_compare( LSCWP_CUR_V, '3.0', '>=' ) )
-				include_once( COOKIE_NOTICE_PATH . 'includes/modules/litespeed-cache/litespeed-cache.php' );
+			// amp 2.0.0+ compatibility
+			if ( $cn->options['general']['amp_support'] && cn_is_plugin_active( 'amp' ) )
+				include_once( COOKIE_NOTICE_PATH . 'includes/modules/amp/amp.php' );
 
-			// sg optimizer 5.5+ compatibility
-			global $siteground_optimizer_loader;
+			// is caching compatibility active?
+			if ( $cn->options['general']['caching_compatibility'] ) {
+				// litespeed cache 3.0.0+ compatibility
+				if ( cn_is_plugin_active( 'litespeed' ) )
+					include_once( COOKIE_NOTICE_PATH . 'includes/modules/litespeed-cache/litespeed-cache.php' );
 
-			if ( ! empty( $siteground_optimizer_loader ) && is_object( $siteground_optimizer_loader ) && is_a( $siteground_optimizer_loader, 'SiteGround_Optimizer\Loader\Loader' ) && defined( '\SiteGround_Optimizer\VERSION' ) && version_compare( \SiteGround_Optimizer\VERSION, '5.5', '>=' ) )
-				include_once( COOKIE_NOTICE_PATH . 'includes/modules/sg-optimizer/sg-optimizer.php' );
+				// sg optimizer 5.5.0+ compatibility
+				if ( cn_is_plugin_active( 'sgoptimizer' ) )
+					include_once( COOKIE_NOTICE_PATH . 'includes/modules/sg-optimizer/sg-optimizer.php' );
 
-			// wp rocket 3.8+ compatibility
-			if ( function_exists( 'rocket_init' ) && defined( 'WP_ROCKET_VERSION' ) && version_compare( WP_ROCKET_VERSION, '3.8', '>=' ) )
-				include_once( COOKIE_NOTICE_PATH . 'includes/modules/wp-rocket/wp-rocket.php' );
+				// wp rocket 3.8.0+ compatibility
+				if ( cn_is_plugin_active( 'wprocket' ) )
+					include_once( COOKIE_NOTICE_PATH . 'includes/modules/wp-rocket/wp-rocket.php' );
+			}
 		}
 	}
 
@@ -70,14 +75,17 @@ class Cookie_Notice_Frontend {
 			if ( $cn->get_status() === 'active' ) {
 				add_action( 'wp_head', [ $this, 'add_cookie_compliance' ], 0 );
 
-				// autoptimize 2.4+
-				if ( function_exists( 'autoptimize' ) && defined( 'AUTOPTIMIZE_PLUGIN_VERSION' ) && version_compare( AUTOPTIMIZE_PLUGIN_VERSION, '2.4', '>=' ) )
-					include_once( COOKIE_NOTICE_PATH . 'includes/modules/autoptimize/autoptimize.php' );
+				// is caching compatibility active?
+				if ( $cn->options['general']['caching_compatibility'] ) {
+					// autoptimize 2.4.0+
+					if ( cn_is_plugin_active( 'autoptimize' ) )
+						include_once( COOKIE_NOTICE_PATH . 'includes/modules/autoptimize/autoptimize.php' );
+				}
 
 				// is blocking active?
 				if ( $cn->options['general']['app_blocking'] ) {
-					// contact form 7 5.1+ recaptcha v3 compatibility
-					if ( class_exists( 'WPCF7' ) && class_exists( 'WPCF7_RECAPTCHA' ) && defined( 'WPCF7_VERSION' ) && version_compare( WPCF7_VERSION, '5.1', '>=' ) )
+					// contact form 7 5.1.0+ recaptcha v3 compatibility
+					if ( cn_is_plugin_active( 'contactform7' ) )
 						include_once( COOKIE_NOTICE_PATH . 'includes/modules/contact-form-7/contact-form-7.php' );
 				}
 			// cookie notice initialization
@@ -106,8 +114,8 @@ class Cookie_Notice_Frontend {
 
 		// is cookie compliance active?
 		if ( $cn->get_status() === 'active' ) {
-			// elementor 1.3+ compatibility, needed early for is_preview_mode
-			if ( did_action( 'elementor/loaded' ) && defined( 'ELEMENTOR_VERSION' ) && version_compare( ELEMENTOR_VERSION, '1.3', '>=' ) )
+			// elementor 1.3.0+ compatibility, needed early for is_preview_mode
+			if ( cn_is_plugin_active( 'elementor' ) )
 				include_once( COOKIE_NOTICE_PATH . 'includes/modules/elementor/elementor.php' );
 		}
 
@@ -217,11 +225,11 @@ class Cookie_Notice_Frontend {
 	}
 
 	/**
-	 * Run Cookie Compliance.
+	 * Get Cookie Compliance options.
 	 *
-	 * @return void
+	 * @return array
 	 */
-	public function add_cookie_compliance() {
+	public function get_cc_options() {
 		// get main instance
 		$cn = Cookie_Notice();
 
@@ -243,6 +251,18 @@ class Cookie_Notice_Frontend {
 			]
 		);
 
+		// get config timestamp
+		if ( is_multisite() && $cn->is_plugin_network_active() && $cn->network_options['global_override'] )
+			$timestamp = (int) get_site_transient( 'cookie_notice_config_update' );
+		else
+			$timestamp = (int) get_transient( 'cookie_notice_config_update' );
+
+		// update config?
+		if ( $timestamp > 0 ) {
+			$options['cachePurge'] = true;
+			$options['cacheTimestamp'] = $timestamp;
+		}
+
 		// debug mode
 		if ( $cn->options['general']['debug_mode'] )
 			$options['debugMode'] = true;
@@ -261,15 +281,35 @@ class Cookie_Notice_Frontend {
 			$options['customPatterns'] = ! empty( $patterns ) ? $patterns : [];
 		}
 
-		// message output
+		return $options;
+	}
+
+	/**
+	 * Get Cookie Compliance output.
+	 *
+	 * @param array $options
+	 * @return string
+	 */
+	public function get_cc_output( $options ) {
 		$output = '
 		<!-- Cookie Compliance -->
-		<script type="text/javascript">
-			var huOptions = ' . wp_json_encode( $options ) . ';
-		</script>
-		<script type="text/javascript" src="' . esc_url( $cn->get_url( 'widget' ) ) . '"></script>';
+		<script type="text/javascript">var huOptions = ' . wp_json_encode( $options ) . ';</script>
+		<script type="text/javascript" src="' . esc_url( Cookie_Notice()->get_url( 'widget' ) ) . '"></script>';
 
-		echo apply_filters( 'cn_cookie_compliance_output', $output, $options );
+		return apply_filters( 'cn_cookie_compliance_output', $output, $options );
+	}
+
+	/**
+	 * Run Cookie Compliance.
+	 *
+	 * @return void
+	 */
+	public function add_cookie_compliance() {
+		// get options
+		$options = $this->get_cc_options();
+
+		// display output
+		echo $this->get_cc_output( $options );
 	}
 
 	/**
@@ -459,7 +499,7 @@ class Cookie_Notice_Frontend {
 
 		wp_add_inline_script( 'cookie-notice-front', 'var cnArgs = ' . wp_json_encode( $script_data ) . ";\n", 'before' );
 
-		wp_enqueue_style( 'cookie-notice-front', COOKIE_NOTICE_URL . '/css/front' . ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '.min' : '' ) . '.css' );
+		wp_enqueue_style( 'cookie-notice-front', COOKIE_NOTICE_URL . '/css/front' . ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '.min' : '' ) . '.css', [], $cn->defaults['version'] );
 	}
 
 	/**
